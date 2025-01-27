@@ -1,0 +1,7 @@
+photo-critique-app/
+├── app/
+│   ├── page.tsx
+│   ├── layout.tsx
+│   └── api/
+│       └── analyze-photo/
+│           └── route.ts
