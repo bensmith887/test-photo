@@ -1,0 +1,165 @@
+// Project structure:
+/*
+photo-critique-app/
+├── netlify.toml
+├── package.json
+├── .env.local
+├── .gitignore
+├── next.config.js
+├── tailwind.config.js
+├── app/
+│   ├── page.tsx
+│   ├── layout.tsx
+│   └── api/
+│       └── analyze-photo/
+│           └── route.ts
+└── components/
+    └── ui/
+        ├── card.tsx
+        └── button.tsx
+*/
+
+// netlify.toml
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+// package.json
+{
+  "name": "photo-critique-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.11.0",
+    "@netlify/plugin-nextjs": "^4.41.3",
+    "lucide-react": "^0.341.0",
+    "next": "14.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.19",
+    "@types/react": "^18.2.56",
+    "@types/react-dom": "^18.2.19",
+    "autoprefixer": "^10.4.17",
+    "eslint": "^8.56.0",
+    "eslint-config-next": "14.1.0",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.3.3"
+  }
+}
+
+// .gitignore
+.env*
+node_modules
+.next
+out
+build
+.DS_Store
+*.pem
+.vercel
+.netlify
+
+// next.config.js
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  images: {
+    domains: ['localhost'],
+  },
+  reactStrictMode: true,
+}
+
+module.exports = nextConfig
+
+// tailwind.config.js
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    './pages/**/*.{js,ts,jsx,tsx,mdx}',
+    './components/**/*.{js,ts,jsx,tsx,mdx}',
+    './app/**/*.{js,ts,jsx,tsx,mdx}',
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
+
+// app/layout.tsx
+import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
+import './globals.css'
+
+const inter = Inter({ subsets: ['latin'] })
+
+export const metadata: Metadata = {
+  title: 'Photography Critique Platform',
+  description: 'AI-powered photography critique system',
+}
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="en">
+      <body className={inter.className}>{children}</body>
+    </html>
+  )
+}
+
+// app/api/analyze-photo/route.ts
+import { Anthropic } from '@anthropic-ai/sdk';
+import { NextResponse } from 'next/server';
+
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
+
+export async function POST(request: Request) {
+  try {
+    const { image, prompt } = await request.json();
+
+    const message = await anthropic.messages.create({
+      model: 'claude-3-haiku-20240307',
+      max_tokens: 1024,
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: prompt
+          },
+          {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: 'image/jpeg',
+              data: image.split(',')[1]
+            }
+          }
+        ]
+      }]
+    });
+
+    const critique = JSON.parse(message.content[0].text);
+    return NextResponse.json(critique);
+  } catch (error) {
+    console.error('Error processing image:', error);
+    return NextResponse.json(
+      { message: 'Error processing image' },
+      { status: 500 }
+    );
+  }
+}
